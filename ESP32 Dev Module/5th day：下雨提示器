@@ -1,0 +1,85 @@
+#ifndef __LED_H
+#define __LED_H
+
+#include "Arduino.h"
+
+#define LED_PIN 2
+#define LED(x)  digitalWrite(LED_PIN, x)
+/*
+  这段代码类似于这种函数形式
+  void BEEP(int x) {
+    digitalWrite(BEEP_PIN, x);
+  }
+*/
+#define LED_TOGGLE() digitalWrite(LED_PIN, !digitalRead(LED_PIN))
+
+void led_init(void);
+
+#endif
+#include "beep.h"
+#include "rain_sensor.h"
+
+void setup() {
+  beep_init();
+  led_init();
+  rain_sensor_init();
+}
+
+void loop() {
+  if (RAIN == 0){ //检测到有雨就位低电平
+    BEEP(0);
+  }
+  else {
+    BEEP(1);
+  }
+  LED_TOGGLE();
+  delay(200);
+}
+
+#include "rain_sensor.h"
+
+void key_init(){
+  pinMode(KEY_PIN, INPUT_PULLUP);/* 按键没有按下时，检测到的是高电平 */
+}
+#ifndef __RAIN_SENSOR_H
+#define __RAIN_SENSOR_H
+
+#include "Arduino.h"
+
+#define RAIN_PIN   4
+
+#define RAIN       digitalRead(RAIN_PIN)
+
+void rain_sensor_init(void);
+
+#endif
+#include "beep.h"
+
+void beep_init(){
+  pinMode(BEEP_PIN, OUTPUT);
+  digitalWrite(BEEP_PIN, HIGH);
+}
+#ifndef __BEEP_H
+#define __BEEP_H
+
+#include "Arduino.h"
+
+#define BEEP_PIN 2
+#define BEEP(x)  digitalWrite(BEEP_PIN, x)
+/*
+  这段代码类似于这种函数形式
+  void BEEP(int x) {
+    digitalWrite(BEEP_PIN, x);
+  }
+*/
+#define BEEP_TOGGLE() digitalWrite(BEEP_PIN, !digitalRead(BEEP_PIN))
+
+void beep_init(void);
+
+#endif
+#include "LED.h"
+
+void led_init(){
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, HIGH);
+}
