@@ -18,6 +18,8 @@
 //     return 0;
 // }
 
+
+
 int main(){
     int x,  N, judge = 0;
     scanf("%d",&N);
