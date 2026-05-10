@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <limits.h>
 
+
 // 链表节点结构体：存储栈的单个元素
 typedef struct Node {
     int data;               // 存储元素的值
