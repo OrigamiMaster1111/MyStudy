@@ -1,0 +1,144 @@
+#include "LED.h"
+
+void led_init(int LED_pin){
+  pinMode(LED_pin,  OUTPUT);
+  digitalWrite(LED_pin, LOW);
+}
+#ifndef __LED_H
+#define __LED_H
+
+#include "Arduino.h"
+
+#define LED_PIN_1   18
+#define LED_PIN_2   19
+#define LED_PIN_3   21
+
+#define LED_1(x)  digitalWrite(18, x)
+#define LED_2(x)  digitalWrite(19, x)
+#define LED_3(x)  digitalWrite(21, x)
+
+#define LED_TOGGLE(x) digitalWrite(x, !digitalRead(x))
+
+void led_init(int LED_pin);
+
+#endif
+#include "responder.h"
+#include "beep.h"
+#include "LED.h"
+
+void responder_init(){
+  pinMode(RESPONDER_PIN_1, INPUT_PULLUP);
+  pinMode(RESPONDER_PIN_2, INPUT_PULLUP);
+  pinMode(RESPONDER_PIN_3, INPUT_PULLUP);
+
+  attachInterrupt(RESPONDER_PIN_1, responder_isr1, CHANGE);
+  attachInterrupt(RESPONDER_PIN_2, responder_isr2, CHANGE);
+  attachInterrupt(RESPONDER_PIN_3, responder_isr3, CHANGE);
+}
+
+void responder_isr1(){ /*isr 是 Interrupt Service Routine（中断服务例程）的缩写*/
+  detachInterrupt(RESPONDER_PIN_1);
+  detachInterrupt(RESPONDER_PIN_2);
+  detachInterrupt(RESPONDER_PIN_3);
+  LED_TOGGLE(18);
+  BEEP_TOGGLE();
+  delay(1000);
+  BEEP_TOGGLE();
+  beepFlag = true;
+}
+
+void responder_isr2(){ /*isr 是 Interrupt Service Routine（中断服务例程）的缩写*/
+  detachInterrupt(RESPONDER_PIN_1);
+  detachInterrupt(RESPONDER_PIN_2);
+  detachInterrupt(RESPONDER_PIN_3);
+  LED_TOGGLE(19);
+  BEEP_TOGGLE();
+  delay(1000);
+  BEEP_TOGGLE();
+  beepFlag = true;
+}
+
+void responder_isr3(){ /*isr 是 Interrupt Service Routine（中断服务例程）的缩写*/
+  detachInterrupt(RESPONDER_PIN_1);
+  detachInterrupt(RESPONDER_PIN_2);
+  detachInterrupt(RESPONDER_PIN_3);
+  LED_TOGGLE(21);
+  beepFlag = true;
+}
+#ifndef __RESPONDER_H
+#define __RESPONDER_H
+
+#include "Arduino.h"
+
+#define RESPONDER_PIN_1  32
+#define RESPONDER_PIN_2  33
+#define RESPONDER_PIN_3  35
+
+#define RESPONDER_1(x) digitalWrite(RESPONDER_PIN_1, x)
+#define RESPONDER_2(x) digitalWrite(RESPONDER_PIN_2, x)
+#define RESPONDER_3(x) digitalWrite(RESPONDER_PIN_3, x)
+
+#define RESPONDER_TOGGLE(x) digitalWrite(x, !digitalRead(RESPONDER_PIN))
+
+void responder_init(void);
+
+void responder_isr1();
+void responder_isr2();
+void responder_isr3();
+
+#endif
+#include "responder.h"
+#include "beep.h"
+#include "LED.h"
+
+volatile bool Start = false;
+volatile bool beepFlag = false;
+
+void setup(){
+  pinMode(0, INPUT_PULLUP);
+
+  beep_init();
+  led_init(LED_PIN_1);
+  led_init(LED_PIN_2);
+  led_init(LED_PIN_3);
+  responder_init();
+}
+
+void loop(){
+  Start = (digitalRead(0) == LOW);
+
+  if (beepFlag){
+    BEEP_TOGGLE();
+    delay(200);
+    BEEP_TOGGLE();
+    beepFlag = false;
+  }
+
+  if (Start){
+    beep_init();
+    led_init(LED_PIN_1);
+    led_init(LED_PIN_2);
+    led_init(LED_PIN_3);
+    responder_init();
+  }
+}
+#include "beep.h"
+
+void beep_init(void){
+  pinMode(BEEP_PIN, OUTPUT);
+  BEEP(1);
+}
+#ifndef __BEEP_H
+#define __BEEP_H
+#include "Arduino.h"
+
+extern volatile bool beepFlag;
+#define BEEP_PIN  25
+
+#define BEEP(x) digitalWrite(BEEP_PIN, x)
+
+#define BEEP_TOGGLE() digitalWrite(BEEP_PIN, !digitalRead(BEEP_PIN))
+
+void beep_init(void);
+
+#endif
