@@ -1,0 +1,34 @@
+unsigned long previousMillis = 0;
+const long interval = 3000;
+uint8_t Buffer[50];
+
+void setup(){
+  Serial.begin(115200);
+  Serial.println("System Started");
+}
+
+void loop(){
+  // 显示串口 0 接收到的数据
+  int len = Serial.available();
+
+  if (len > 1){
+    int incByte = Serial.read(Buffer, len);
+    Serial.write(Buffer, incByte);
+  }
+  else if (len == 1){
+    int byte = Serial.read();
+    Serial.print(byte);
+    Serial.write(byte);
+  }
+  else {
+    Serial.println("Nothing here!");
+  }
+
+  // 每隔三秒发送信息
+  unsigned long currentMillis = millis();
+
+  if (currentMillis - previousMillis >= interval){
+    previousMillis = currentMillis;
+    Serial.println("wating for serial data");
+  }
+}
