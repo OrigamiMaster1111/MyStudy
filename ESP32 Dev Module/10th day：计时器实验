@@ -1,0 +1,67 @@
+#include "led.h"
+
+void led_init(){
+  pinMode(LED_PIN, OUTPUT);
+  LED(0);
+}
+#ifndef __LED_H
+#define __LED_H
+
+#include <Arduino.h>
+
+#define LED_PIN 32
+
+#define LED(x) digitalWrite(LED_PIN, x)
+
+#define LED_TOGGLE() digitalWrite(LED_PIN, !digitalRead(LED_PIN))
+
+void led_init(void);
+
+#endif
+#include "timer.h"
+#include "led.h"
+
+hw_timer_t *timer0 = NULL;
+
+void timer0_callback(){
+  LED_TOGGLE();
+}
+
+void timer_init(uint32_t alarm){
+  // 初始化定时器
+  timer0 = timerBegin(alarm);
+
+  // 注册中断回调函数
+  timerAttachInterrupt(timer0, timer0_callback);
+
+  // 设置定时时间和触发方式
+  // timerAlarmWrite(timer0, 1000000);
+  // 启动定时器
+  // timerAlarmEnable(timer0);
+
+  // 3. 设置报警并启动
+  // 参数：(定时器句柄, 报警值, 是否自动重装载, 保留)
+  // 1MHz * 1000000us = 1秒
+  timerAlarm(timer0, alarm, true, 0);
+}
+#ifndef __TIMER_H
+#define __TIMER_H
+
+#include "Arduino.h"
+
+#define TIMERx    0
+
+void timer_init(uint16_t psc, uint32_t alarm);
+
+#endif
+#include "led.h"
+#include "timer.h"
+
+void setup(){
+  led_init();
+  timer_init(1000000);
+}
+
+void loop(){
+
+}
