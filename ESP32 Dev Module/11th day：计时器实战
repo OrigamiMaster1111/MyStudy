@@ -1,0 +1,159 @@
+#ifndef __KEY_H
+#define __KEY_H
+
+#include "Arduino.h"
+
+#define KEY_PIN   0
+
+#define KEY() digitalRead(KEY_PIN)
+
+void key_init(void);
+
+#endif
+#include "LED.h"
+
+void led_init(){
+  for (int i = 0; i < 5; ++i){
+    pinMode(LED_PIN_ARR[i], OUTPUT);
+    digitalWrite(LED_PIN_ARR[i], LOW);
+  }
+}
+#ifndef __LED_H
+#define __LED_H
+
+#include "Arduino.h"
+
+uint8_t extern LED_PIN_ARR[5];
+
+#define LED(LED_PIN, x)  digitalWrite(LED_PIN, x)
+/*
+  这段代码类似于这种函数形式
+  void BEEP(int x) {
+    digitalWrite(BEEP_PIN, x);
+  }
+*/
+#define LED_TOGGLE(LED_PIN) digitalWrite(LED_PIN, !digitalRead(LED_PIN))
+
+void led_init(void);
+
+#endif
+#include "timer.h"
+#include "LED.h"
+#include "esp32-hal-timer.h"
+
+void timer_callback(){
+  ++led_index;
+  LED_TOGGLE(LED_PIN_ARR[led_index]);
+}
+
+void timer_init(){
+  timer = timerBegin(1000000);
+  timerAttachInterrupt(timer, timer_callback);
+}
+
+void timer_enable(){
+  timerAlarm(timer, 1000000, true, 0);
+}
+
+void timer_disable(){
+  // timerAlarmDisable()
+  timerEnd(timer);
+}
+#ifndef __TIMER_H
+#define __TIMER_H
+
+#include "Arduino.h"
+#include "esp32-hal-timer.h"
+
+hw_timer_t extern *timer;
+int extern led_index;
+uint8_t extern LED_PIN_ARR[5];
+
+void timer_callback();
+
+void timer_init();
+
+void timer_enable();
+
+void timer_disable();
+
+#endif
+#include "beep.h"
+
+void beep_init(){
+  pinMode(BEEP_PIN, OUTPUT);
+  digitalWrite(BEEP_PIN, HIGH);
+}
+#ifndef __BEEP_H
+#define __BEEP_H
+
+#include "Arduino.h"
+
+#define BEEP_PIN 18
+#define BEEP(x)  digitalWrite(BEEP_PIN, x)
+/*
+  这段代码类似于这种函数形式
+  void BEEP(int x) {
+    digitalWrite(BEEP_PIN, x);
+  }
+*/
+#define BEEP_TOGGLE() digitalWrite(BEEP_PIN, !digitalRead(BEEP_PIN))
+
+void beep_init(void);
+
+#endif
+#include "key.h"
+#include "LED.h"
+#include "beep.h"
+#include "timer.h"
+
+int led_index = -1;
+hw_timer_t *timer = NULL;
+bool volatile count_flag = false;
+uint8_t LED_PIN_ARR[5] {25, 33, 32, 35, 34};
+
+void setup() {
+  led_init();
+  key_init();
+  beep_init();
+  timer_init();
+}
+
+void loop() {
+  /* #define KEY digitalRead(KEY_PIN) */
+  if (KEY() == 0){ /*是否按下按钮*/
+
+    delay(100);
+    
+    if (KEY() == 0) { /*软件消抖*/
+      led_index = -1;
+
+      for (int i = 0; i < 5; ++i){
+        LED(LED_PIN_ARR[i], HIGH);
+      }
+      count_flag = true;
+    }
+  }
+
+  if (count_flag){
+    BEEP(0);
+    delay(100);
+    BEEP(1);
+    timer_enable();
+    count_flag = false;
+  }
+
+  if (led_index == 5){
+    // led_index = -1;
+    timer_disable();
+    BEEP_TOGGLE();
+    delay(100);
+    BEEP_TOGGLE();
+  }
+}
+
+#include "key.h"
+
+void key_init(){
+  pinMode(KEY_PIN, INPUT_PULLUP);/* 按键没有按下时，检测到的是高电平 */
+}
