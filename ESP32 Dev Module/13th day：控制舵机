@@ -1,0 +1,15 @@
+void setup() {
+  ledcAttach(23, 50, 10);
+}
+
+void loop() {
+  for (int i = 25; i <= 125; ++i){
+    ledcWrite(23, i);
+    delay(10);
+  }
+
+  for (int i = 125; i >= 0; --i){
+    ledcWrite(23, i);
+    delay(10);
+  }
+}
