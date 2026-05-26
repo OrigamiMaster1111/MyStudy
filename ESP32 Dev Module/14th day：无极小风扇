@@ -1,0 +1,49 @@
+#include "key.h"
+
+void key_init(){
+  pinMode(KEY_PIN, INPUT_PULLUP);/* 按键没有按下时，检测到的是高电平 */
+}
+#ifndef __KEY_H
+#define __KEY_H
+
+#include "Arduino.h"
+
+#define KEY_PIN   0
+
+#define KEY digitalRead(KEY_PIN)
+
+void key_init(void);
+
+#endif
+#include "key.h"
+
+int pwm_duty = 0;/*占空比值*/
+uint8_t flag = 1;/*默认递增*/
+
+void setup(){
+  key_init();
+  ledcAttach(23, 10000, 10);/*占空比分辨率为10，范围为（0 ~ 1023）*/
+}
+
+void loop(){
+  if (KEY == 0){
+    delay(10);
+    if (KEY == 0){
+      if (flag){
+        pwm_duty += 25;
+      }
+      else if (!flag){
+        pwm_duty -= 25;
+      }
+    }
+  }
+
+  if (pwm_duty > 1000){
+    flag = 0;
+  }
+  else if (pwm_duty < 25){
+    flag = 1;
+  }
+  ledcWrite(23, pwm_duty);
+  delay(200);
+}
