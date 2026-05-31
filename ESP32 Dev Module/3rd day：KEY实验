@@ -11,6 +11,7 @@ void loop() {
   Serial.print("GPIO0 电平：");
   Serial.println(KEY);  // 打印真实值
 
+
   /* #define KEY digitalRead(KEY_PIN) */
   if (KEY == 0){/*是否按下按钮*/
     delay(100);
