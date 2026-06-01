@@ -1,0 +1,17 @@
+#include <ESP32Time.h>
+
+ESP32Time rtc;
+ESP32Time rtc1(28800);
+
+void setup(){
+  Serial.begin(115200);
+  rtc.setTime(30, 30, 17, 31, 5, 2026);
+  // rtc.setTime();
+}
+
+void loop(){
+  // struct tm timeinfo = rtc.getTimeStruct();
+  Serial.println(rtc.getTime("%A, %B %d %Y %H: %M: %S"));
+  Serial.println(rtc1.getTime("%A, %B %d %Y %H: %M: %S"));
+  delay(1000);
+}
