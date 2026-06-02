@@ -1,0 +1,36 @@
+#include <ESP32Time.h>
+#include <Wire.h>
+#include "SSD1306Wire.h"
+
+ESP32Time rtc;
+struct tm timeInfo;
+SSD1306Wire display(0x3C, 18, 19, GEOMETRY_128_64, I2C_TWO, 800000);
+
+void setup() {
+  Serial.begin(115200);
+
+  display.init();
+  display.flipScreenVertically();
+  display.clear();
+
+  rtc.setTime(30, 59, 17, 31, 5, 2026);
+}
+
+char dataBuf[128];
+
+void loop() {
+  display.clear();
+  timeInfo = rtc.getTimeStruct();
+  sprintf(dataBuf, "%04d-%02d-%02d", timeInfo.tm_year + 1900, timeInfo.tm_mon + 1, timeInfo.tm_mday);
+  // Serial.println(display.getStringWidth("2026-05-31")); // 打印字符串长度方便居中显示  82
+
+  display.setFont(ArialMT_Plain_16);/*设置字体大小*/
+  display.drawString((128-82) / 2, 8, (String)dataBuf);
+
+  display.setFont(ArialMT_Plain_24);
+  display.drawString(16, 30, rtc.getTime());
+
+  display.display();
+
+  delay(1000);
+}
