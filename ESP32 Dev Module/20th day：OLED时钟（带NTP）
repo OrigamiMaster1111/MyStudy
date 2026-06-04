@@ -1,0 +1,153 @@
+#include <ESP32Time.h>
+#include <Wire.h>
+#include "SSD1306Wire.h"
+#include <WiFi.h>  // 新增WiFi库
+#include <time.h>  // 新增时间库，用于NTP同步
+
+// ====================== 配置参数（请修改为你的信息）======================
+const char* WIFI_SSID = "Life goes on";    // 替换为你的WiFi SSID
+const char* WIFI_PASS = "123456789";    // 替换为你的WiFi密码
+const long  GMT_OFFSET_SEC = 8*3600;       // 时区：UTC+8小时（28800秒）
+const int   DAYLIGHT_OFFSET_SEC = 0;       // 夏令时：中国不使用，设为0
+const char* NTP_SERVERS[] = {              // NTP服务器列表，多个提高稳定性
+  "pool.ntp.org",
+  "cn.ntp.org.cn",
+  "time1.aliyun.com"
+};
+
+
+// ====================== 全局变量定义 ======================
+ESP32Time rtc;
+struct tm timeInfo;
+SSD1306Wire display(0x3C, 18, 19, GEOMETRY_128_64, I2C_TWO, 800000);
+bool ntpSynced = false;  // NTP同步状态标记
+unsigned long lastSyncAttempt = 0;
+const long SYNC_INTERVAL = 3600000;  // 每小时同步一次NTP（3600秒）
+
+
+bool connectWiFi(){
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
+  
+  Serial.print("Connecting to WiFi: ");
+  Serial.println(WIFI_SSID);
+  
+  int retry = 0;
+  const int MAX_RETRY = 20;  // 最大重试次数
+  
+  while (WiFi.status() != WL_CONNECTED && retry < MAX_RETRY) {
+    delay(500);
+    Serial.print(".");
+    retry++;
+  }
+  
+  Serial.println();
+  
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.print("WiFi connected. IP: ");
+    Serial.println(WiFi.localIP());
+    return true;
+  } else {
+    Serial.println("WiFi connect failed");
+    return false;
+  }
+}
+
+
+bool syncNTPTime(){
+  //配置NTP客户端
+  configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, NTP_SERVERS[0], NTP_SERVERS[1], NTP_SERVERS[2]);
+
+  Serial.println("Watting for NTP time sync...");
+
+  //等待同步时间完成
+  int retry = 0;
+  const int MAX_RETRY = 10;
+
+  while (!getLocalTime(&timeInfo) && retry < MAX_RETRY){
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println();
+
+  if (retry < MAX_RETRY){
+    Serial.print("NTP time: ");
+    Serial.print(asctime(&timeInfo));
+    return true;
+  }
+  else {
+    Serial.println("NTP sync timeout");
+    return false;
+  }
+}
+
+
+
+void setup() {
+  Serial.begin(115200);
+
+  display.init();
+  display.flipScreenVertically();
+  display.clear();
+  display.setFont(ArialMT_Plain_16);
+  display.drawString(0, 0, "Connecting WiFi...");
+  display.display();
+
+  // 1. 连接WiFi
+  if (connectWiFi()){
+    display.clear();
+    display.drawString(0, 0, "WiFi Connected");
+    display.drawString(0, 20, "Syncing NTP...");
+    display.display();
+
+    //2.同步NTP时间
+    if (syncNTPTime()){
+      ntpSynced = true;
+      Serial.println("NTP sync successful!");
+
+      //3.将NTP时间设置到ESP32Time
+      rtc.setTimeStruct(timeInfo);
+    }
+
+    lastSyncAttempt = millis();
+    display.clear();
+  }
+
+  rtc.setTime(30, 59, 17, 31, 5, 2026);
+}
+
+char dataBuf[128];
+
+void loop() {
+  // 定期同步NTP（每小时一次）
+  if (ntpSynced && (millis() - lastSyncAttempt >= SYNC_INTERVAL)) {
+    if (WiFi.status() == WL_CONNECTED) {
+      if (syncNTPTime()) {
+        rtc.setTimeStruct(timeInfo);
+        Serial.println("NTP resynced");
+      }
+    } else if (connectWiFi()) {
+      if (syncNTPTime()) {
+        rtc.setTimeStruct(timeInfo);
+        Serial.println("WiFi reconnected and NTP synced");
+      }
+    }
+    lastSyncAttempt = millis();
+  }
+
+  // 原有OLED显示逻辑
+  display.clear();
+  timeInfo = rtc.getTimeStruct();
+  sprintf(dataBuf, "%04d-%02d-%02d", timeInfo.tm_year + 1900, timeInfo.tm_mon + 1, timeInfo.tm_mday);
+  
+  display.setFont(ArialMT_Plain_16);
+  display.drawString((128-82)/2, 8, (String)dataBuf);
+
+  display.setFont(ArialMT_Plain_24);
+  display.drawString(16, 30, rtc.getTime());
+
+  display.display();
+
+  delay(1000);
+}
