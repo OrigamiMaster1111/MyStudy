@@ -1,0 +1,32 @@
+package SchoolJavaLesson.test12;
+
+public class Main {
+    public static void main(String[] args){
+        String myInfo = "姓名：陈宇威 出生时间：2007.01.01 邮箱：chenyuwei544@gmail.com 学号：2025218757";
+
+        //判断姓氏
+        int firstFlag = myInfo.indexOf("：");
+        int spaceAfterName = myInfo.indexOf(" ", firstFlag);
+        String name = myInfo.substring(firstFlag+1, spaceAfterName);
+        System.out.println("姓名：" + name);
+        System.out.println("是否姓“陈”：" + name.startsWith("陈"));
+        
+
+        //输出出生日期
+        int secondFlag = myInfo.indexOf("：", spaceAfterName);
+        int spaceAfterbir = myInfo.indexOf(" ", secondFlag);
+        String birthday = myInfo.substring(secondFlag+1, spaceAfterbir);
+        System.out.println("生日：" + birthday);
+
+        //输出邮箱
+        int thirdFlag = myInfo.indexOf("：", spaceAfterbir);
+        int spaceAfterMail = myInfo.indexOf(" ", thirdFlag);
+        String mail = myInfo.substring(thirdFlag+1, spaceAfterMail);
+        System.err.println("邮箱：" + mail);
+
+        //输出学号
+        int fourthFlag = myInfo.indexOf("：", spaceAfterMail);
+        String ID = myInfo.substring(fourthFlag+1);
+        System.err.println("学号：" + ID);
+    }
+}
