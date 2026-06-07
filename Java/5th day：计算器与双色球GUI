@@ -1,0 +1,218 @@
+package SchoolJavaLesson.test13;
+
+public class Main {
+    public static void main(String[] args) {
+        new Calculator();
+        // new DoubleColorBall();
+    }
+}
+
+package SchoolJavaLesson.test13;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+
+public class Calculator extends JFrame implements ActionListener {
+    private JTextField textField; 
+    private JButton[] buttons = new JButton[16]; 
+    private String operator = ""; 
+    private double num1 = 0, result = 0; 
+    private boolean newNumFlag = true;
+    
+    // 单独定义一个清除按钮，方便布局
+    private JButton clearButton;
+
+    public Calculator(){
+        setTitle("计算器");
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(new BorderLayout(10, 10)); // 使用边框布局，方便上下分区
+
+        // 1. 顶部区域：文本框 + 清除按钮
+        JPanel topPanel = new JPanel(new BorderLayout());
+        textField = new JTextField();
+        textField.setEditable(false);
+        textField.setHorizontalAlignment(JTextField.RIGHT);
+        textField.setFont(new Font("Arial", Font.BOLD, 20));
+        
+        clearButton = new JButton("清除");
+        clearButton.addActionListener(this);
+        
+        topPanel.add(textField, BorderLayout.CENTER);
+        topPanel.add(clearButton, BorderLayout.EAST);
+        add(topPanel, BorderLayout.NORTH); // 放在窗口最上面
+
+        // 2. 中间区域：数字和运算符 (4行4列)
+        JPanel panel = new JPanel(new GridLayout(4, 4, 5, 5));
+        
+        // 重新定义按钮文字，去掉空的，凑齐16个
+        String[] btnTexts = {
+            "9", "8", "7", "+",
+            "6", "5", "4", "-",
+            "3", "2", "1", "*",
+            "0", ".", "=", "/"
+        };
+
+        for (int i = 0; i < 16; i++){
+            buttons[i] = new JButton(btnTexts[i]);
+            buttons[i].setFont(new Font("Arial", Font.PLAIN, 18));
+            buttons[i].addActionListener(this);
+            panel.add(buttons[i]);
+        }
+
+        add(panel, BorderLayout.CENTER); // 放在窗口中间
+
+        pack();
+        setLocationRelativeTo(null);
+        setVisible(true);
+    }
+
+    // 注意：方法名必须是 actionPerformed
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        String cmd = e.getActionCommand();
+
+        // 1. 如果点击的是清除按钮
+        if (cmd.equals("清除")) {
+            textField.setText("");
+            newNumFlag = true;
+            return;
+        }
+
+        // 2. 如果点击的是数字按钮 (0-9)
+        if (cmd.charAt(0) >= '0' && cmd.charAt(0) <= '9') {
+            if (newNumFlag) {
+                textField.setText("");
+                newNumFlag = false;
+            }
+            textField.setText(textField.getText() + cmd);
+        }
+        // 3. 如果点击的是小数点
+        else if (cmd.equals(".")) {
+            if (newNumFlag) {
+                textField.setText("0.");
+                newNumFlag = false;
+            } else if (!textField.getText().contains(".")) {
+                textField.setText(textField.getText() + ".");
+            }
+        }
+        // 4. 如果点击的是运算符 (+、-、*、/)
+        else if (cmd.equals("+") || cmd.equals("-") || cmd.equals("*") || cmd.equals("/")) {
+            num1 = Double.parseDouble(textField.getText());
+            operator = cmd;
+            newNumFlag = true;
+        }
+        // 5. 如果点击的是等号
+        else if (cmd.equals("=")) {
+            double num2 = Double.parseDouble(textField.getText());
+            switch (operator) {
+                case "+": result = num1 + num2; break;
+                case "-": result = num1 - num2; break;
+                case "*": result = num1 * num2; break;
+                case "/": result = num1 / num2; break;
+            }
+            textField.setText(String.valueOf(result));
+            newNumFlag = true;
+        }
+    }
+    
+    public static void main(String[] args) {
+        new Calculator();
+    }
+}
+package SchoolJavaLesson.test13;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.util.*;
+
+// 继承JFrame类，实现ActionListener接口处理按钮点击
+public class DoubleColorBall extends JFrame implements ActionListener {
+    private JTextField countField;    // 输入框，用于输入要生成的组数
+    private JTextArea resultArea;     // 文本域，用于显示生成的号码
+    
+    // 构造方法，初始化界面
+    public DoubleColorBall() {
+        setTitle("双色球生成器");     // 设置窗口标题
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);  // 关闭时退出
+        
+        // 创建顶部面板，存放输入控件
+        JPanel topPanel = new JPanel();
+        topPanel.add(new JLabel("请输入号码组数："));  // 添加提示标签
+        
+        countField = new JTextField(10);  // 创建输入框（宽度10列）
+        topPanel.add(countField);
+        
+        // 创建"确定"和"清空"按钮
+        JButton confirmBtn = new JButton("确定");
+        JButton clearBtn = new JButton("清空");
+        confirmBtn.addActionListener(this);  // 添加事件监听
+        clearBtn.addActionListener(this);
+        topPanel.add(confirmBtn);
+        topPanel.add(clearBtn);
+        
+        // 创建结果显示区域
+        resultArea = new JTextArea(10, 40);  // 10行40列的文本域
+        resultArea.setEditable(false);        // 设置为不可编辑
+        
+        // 将文本域放入滚动面板（内容多时可以滚动）
+        add(topPanel, BorderLayout.NORTH);           // 顶部放输入面板
+        add(new JScrollPane(resultArea), BorderLayout.CENTER);  // 中间放滚动区域
+        
+        pack();                  // 自动调整窗口大小
+        setLocationRelativeTo(null);  // 窗口居中
+        setVisible(true);        // 显示窗口
+    }
+    
+    // 按钮点击事件处理方法
+    public void actionPerformed(ActionEvent e) {
+        if (e.getActionCommand().equals("确定")) {
+            generate();  // 点击"确定"，生成号码
+        } else {
+            // 点击"清空"，清空输入和结果
+            countField.setText("");
+            resultArea.setText("");
+        }
+    }
+    
+    // 生成双色球号码的方法
+    private void generate() {
+        try {
+            // 获取用户输入的组数
+            int count = Integer.parseInt(countField.getText());
+            resultArea.setText("");  // 清空之前的结果
+            
+            // 循环生成指定组数的号码
+            for (int i = 0; i < count; i++) {
+                // 生成红球：从1-33中选6个不重复的数字
+                Set<Integer> redSet = new HashSet<>();  // 使用Set保证不重复
+                while (redSet.size() < 6) {
+                    // 生成1-33的随机数并添加到Set中
+                    redSet.add((int)(Math.random() * 33) + 1);
+                }
+                
+                // 将Set转为数组并排序
+                Integer[] reds = redSet.toArray(new Integer[0]);
+                Arrays.sort(reds);  // 从小到大排序
+                
+                // 生成蓝球：从1-16中选1个数字
+                int blue = (int)(Math.random() * 16) + 1;
+                
+                // 格式化输出（%02d表示两位数，不足补0）
+                String line = String.format("红球：%02d %02d %02d %02d %02d %02d  蓝球：%02d%n",
+                    reds[0], reds[1], reds[2], reds[3], reds[4], reds[5], blue);
+                
+                resultArea.append(line);  // 将结果添加到文本域
+            }
+        } catch (Exception ex) {
+            // 如果输入的不是数字，弹出错误提示
+            JOptionPane.showMessageDialog(this, "请输入数字！");
+        }
+    }
+    
+    // 主方法，程序入口
+    public static void main(String[] args) {
+        new DoubleColorBall();  // 创建双色球生成器窗口
+    }
+}
