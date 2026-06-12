@@ -6,6 +6,7 @@ void anywhereInsert(Node* list, int data, int n) {
         printf("Please enter the number within the range.\n");
         return;
     }
+
     // 创建新节点并初始化数据
     Node* node = (Node*)malloc(sizeof(Node));
     node->data = data;
