@@ -17,6 +17,7 @@ void checkAndprint(int rows, int cols,int (*p)[cols]){
         }
     }
 
+
     row_cnt = n, col_cnt = m;//赋予0的个数
    
     //布置一竖列的0，不动行
