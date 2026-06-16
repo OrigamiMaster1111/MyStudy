@@ -2,6 +2,7 @@ int read_JPEG_file(unsigned char *jpegdata, unsigned char *rgbdata, int size){
     struct jpeg_error_mgr jerr;
     struct jpeg_decompress_struct cinfo;
     cinfo.err = jpeg_std_error(&jerr);
+
     //1.创建解码对象并且初始化
     jpeg_create_decompress(&cinfo);
     //2.装备解码的数据
