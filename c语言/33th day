@@ -2,6 +2,7 @@
 
 // int main(){
 //     int i,n,num,cnt = 0;
+
 //     int grades[NUMBER], distribution[11] = {0};
 
 //     printf("请输入学生人数：");
