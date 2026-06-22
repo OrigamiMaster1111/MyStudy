@@ -3,6 +3,7 @@
 using namespace std;
 
 
+
 //类作友元
 class Build;
 class Goodguy{
