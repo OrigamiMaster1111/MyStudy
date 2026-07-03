@@ -1,0 +1,29 @@
+void read_button(){
+    TUYA_GPIO_BASE_CFG_T cfg = {
+        .mode = TUYA_GPIO_PULLUP,
+        .direct = TUYA_GPIO_INPUT,
+    };
+    tkl_gpio_init(BUTTON_PIN, &cfg);
+
+    TUYA_GPIO_LEVEL_E level;
+    TUYA_GPIO_LEVEL_E last_level = TUYA_GPIO_LEVEL_HIGH;
+
+    TAL_PR_INFO("button test start, polling GPIO 12...");
+
+    while (1){
+        tkl_gpio_read(BUTTON_PIN, &level);
+
+        if (level != last_level){
+            tal_system_sleep(20);
+            tkl_gpio_read(BUTTON_PIN, &level);
+
+            if (last_level == TUYA_GPIO_LEVEL_HIGH && level == TUYA_GPIO_LEVEL_LOW){
+                TAL_PR_INFO("button pressed");
+            }
+
+            last_level = level;
+        }
+
+        tal_system_sleep(10);
+    }
+}
