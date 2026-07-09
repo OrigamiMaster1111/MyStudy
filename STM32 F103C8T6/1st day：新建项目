@@ -1,0 +1,18 @@
+#include "stm32f10x.h"
+
+int main(void) {
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC, ENABLE);
+
+    GPIO_InitTypeDef GPIO_InitStructure = {
+        .GPIO_Mode = GPIO_Mode_Out_PP, // 设置为推挽
+        .GPIO_Pin = GPIO_Pin_13,
+        .GPIO_Speed = GPIO_Speed_50MHz,
+    };
+    GPIO_Init(GPIOC, &GPIO_InitStructure);
+
+    GPIO_ResetBits(GPIOC, GPIO_Pin_13);  // PC13低电平点亮LED
+    GPIO_SetBits(GPIOC, GPIO_Pin_13);    // 高电平
+
+    while (1) {
+    }
+}
