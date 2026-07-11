@@ -1,0 +1,73 @@
+#include "stm32f10x.h"                  // Device header
+#include <stdio.h>
+#include "Serial.h"
+#include "Delay.h" 
+#include "SHT30.h"
+#include "timer.h"
+#include "HX711.h"
+
+
+int temp;
+u16 hump;
+
+
+
+int main()
+{
+	SHT30_Init();//SHT30初始化
+	Timer_Init();//定时器1初始化
+//	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2); //设置NVIC中断分组2:2位抢占优先级，2位响应优先级
+	Serial_Init();//串口1初始化	
+	HX711_Init();
+	Get_Maopi();				//称毛皮重量
+//	Delay_ms(1000);
+//	Get_Maopi();				//重新获取毛皮重量
+	while (1)
+	{
+		Get_Weight();
+//		if(temp>25)//温度大于25
+//		{
+//		led1_sd();
+//		led2_sd();
+//		GPIO_ResetBits(GPIOB,GPIO_Pin_2);
+//		}
+//		else if(hump>80)//湿度大于25
+//		{
+//		led1_sd();
+//		led2_sd();
+//		led3_sd();
+//		} 
+//		else if(hump<80&&temp<25)//湿度小于25且温度小于80
+//		{
+//		led1_sd();
+//		GPIO_ResetBits(GPIOB,GPIO_Pin_0|GPIO_Pin_1);
+//		}
+//					Serial_SendByte(0x0A);
+//			printf("%c%c",temp,hump);
+//			Serial_SendByte(0xFF);
+//			Serial_SendByte(0xFF);
+//	printf("OK");
+//		Serial_SendByte(0x0A);
+		
+	}
+	
+}
+
+
+//定时器2断服务程序，每隔1s采样并发送
+
+void TIM2_IRQHandler(void)
+{
+	if (TIM_GetITStatus(TIM2, TIM_IT_Update) == SET)
+	{
+		SHT30_Read_Humiture(&temp,&hump);
+//		Serial_SendByte(0x0A);
+		printf("温度:%d℃\n",temp);
+		printf("温度:%d%%\r\n",hump);
+		//sprintf((char*)buff,"%.1f   ",weight);
+		printf("净重量 = %dg\r\n",Weight_Shiwu);
+//			Serial_SendByte(0xFF);
+//			Serial_SendByte(0xFF);xx
+		TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
+	}
+}
