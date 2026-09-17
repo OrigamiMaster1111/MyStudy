@@ -1,0 +1,166 @@
+#include "stm32f10x.h"
+#include "Delay.h"
+#include "OLED_I2C.h"
+#include "Encoder.h"
+#include "Timer.h"
+#include "AD.h"
+
+int16_t AD_Value = 0;
+float Voltage;
+
+int main(){
+
+    OLED_Init();
+    AD_Init();
+
+    OLED_ShowString(1, 1, "ADValue:");
+    OLED_ShowString(2, 1, "Voltage:");
+
+    while (1){
+        AD_Value = AD_GetValue();
+        
+        Voltage = (float)AD_Value / 4095 * 3.3; // 实际电压值
+
+        OLED_ShowNum(1, 9, AD_Value, 4);
+        OLED_ShowNum(2, 9, Voltage, 1);
+        OLED_ShowNum(2, 11, (uint16_t)Voltage * 100 % 100, 2);
+
+        Delay_ms(100);
+    }
+}
+
+#include "stm32f10x.h"
+
+void AD_Init(void){
+    
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+
+    RCC_ADCCLKConfig(RCC_PCLK2_Div6); // 六分频
+
+    GPIO_InitTypeDef GPIO_InitStructure = {
+        .GPIO_Mode = GPIO_Mode_AIN, // 模拟输入模式
+        /*模拟输入是让信号直接流入板子内部外设(ADC)而非走原来的"数字信号通道"(比如施密特触发器，经过这个模拟信号就变成二值的了，肯定不行)*/
+        .GPIO_Pin = GPIO_Pin_0,
+        .GPIO_Speed = GPIO_Speed_50MHz,
+    };
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+    // 选择规则组的输入通道
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_0/*通道*/, 1/*规则组序列器的次序*/, ADC_SampleTime_55Cycles5/*指定通道的采样时间，目前为55.5个ADCCLK的周期*/);
+
+    ADC_InitTypeDef ADC_InitStructure = {
+        .ADC_Mode = ADC_Mode_Independent, // ADC的工作模式，独立模式/双ADC模式
+        .ADC_DataAlign = ADC_DataAlign_Right, // 数据对齐方式
+        .ADC_ScanConvMode = DISABLE, // 指定扫描模式，单通道或者多通道
+        .ADC_NbrOfChannel = 1, // 通道数目，指定在扫描模式下总共使用几个通道.非扫描模式下默认值为1(序列1)
+        .ADC_ExternalTrigConv = ADC_ExternalTrigConv_None, // 外部触发转换选择(触发控制的触发源,此处为不使用外部触发，用内部软件触发)
+        .ADC_ContinuousConvMode = DISABLE, // 指定转换模式，连续模式还是单次模式
+    };
+    ADC_Init(ADC1, &ADC_InitStructure);
+
+    ADC_Cmd(ADC1, ENABLE); // 开启电源
+
+    // 校准
+    ADC_ResetCalibration(ADC1); // 复位校准
+    while (ADC_GetResetCalibrationStatus(ADC1) == SET); // 返回复位校准的状态
+    ADC_StartCalibration(ADC1); // 开始校准
+    while (ADC_GetCalibrationStatus(ADC1) == SET); // 等待校准完成
+}
+
+uint16_t AD_GetValue(void){
+
+    ADC_SoftwareStartConvCmd(ADC1, ENABLE); // 软件触发转换
+    // 这个循环大概会等待5.6us
+    while (ADC_GetFlagStatus(ADC1, ADC_FLAG_EOC/*规则(或注入)组转换完成标志位*/) == RESET);// 获取标志位状态
+    return ADC_GetConversionValue(ADC1);// 获取转换值
+}
+
+
+
+
+
+
+
+#include "stm32f10x.h"
+#include "Delay.h"
+#include "OLED_I2C.h"
+#include "Encoder.h"
+#include "Timer.h"
+#include "AD.h"
+
+uint16_t AD0, AD1, AD2, AD3;
+
+int main(){
+
+    OLED_Init();
+    AD_Init();
+
+    OLED_ShowString(1, 1, "AD0:");
+    OLED_ShowString(2, 1, "AD1:");
+    OLED_ShowString(3, 1, "AD2:");
+    OLED_ShowString(4, 1, "AD3:");
+
+    while (1){
+
+        AD0 = AD_GetValue(ADC_Channel_0);
+        AD1 = AD_GetValue(ADC_Channel_1);
+        AD2 = AD_GetValue(ADC_Channel_2);
+        AD3 = AD_GetValue(ADC_Channel_3);
+
+        OLED_ShowNum(1, 5, AD0, 4);
+        OLED_ShowNum(2, 5, AD1, 4);
+        OLED_ShowNum(3, 5, AD2, 4);
+        OLED_ShowNum(4, 5, AD3, 4);
+
+        Delay_ms(100);
+    }
+}
+
+#include "stm32f10x.h"
+
+void AD_Init(void){
+    
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+
+    RCC_ADCCLKConfig(RCC_PCLK2_Div6); // 六分频
+
+    GPIO_InitTypeDef GPIO_InitStructure = {
+        .GPIO_Mode = GPIO_Mode_AIN, // 模拟输入模式
+        /*模拟输入是让信号直接流入板子内部外设(ADC)而非走原来的"数字信号通道"(比如施密特触发器，经过这个模拟信号就变成二值的了，肯定不行)*/
+        .GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_2 | GPIO_Pin_3,
+        .GPIO_Speed = GPIO_Speed_50MHz,
+    };
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+    // 选择规则组的输入通道
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_0/*通道*/, 1/*规则组序列器的次序*/, ADC_SampleTime_55Cycles5/*指定通道的采样时间，目前为55.5个ADCCLK的周期*/);
+
+    ADC_InitTypeDef ADC_InitStructure = {
+        .ADC_Mode = ADC_Mode_Independent, // ADC的工作模式，独立模式/双ADC模式
+        .ADC_DataAlign = ADC_DataAlign_Right, // 数据对齐方式
+        .ADC_ScanConvMode = DISABLE, // 指定扫描模式，单通道或者多通道
+        .ADC_NbrOfChannel = 1, // 通道数目，指定在扫描模式下总共使用几个通道.非扫描模式下默认值为1(序列1)
+        .ADC_ExternalTrigConv = ADC_ExternalTrigConv_None, // 外部触发转换选择(触发控制的触发源,此处为不使用外部触发，用内部软件触发)
+        .ADC_ContinuousConvMode = DISABLE, // 指定转换模式，连续模式还是单次模式
+    };
+    ADC_Init(ADC1, &ADC_InitStructure);
+
+    ADC_Cmd(ADC1, ENABLE); // 开启电源
+
+    // 校准
+    ADC_ResetCalibration(ADC1); // 复位校准
+    while (ADC_GetResetCalibrationStatus(ADC1) == SET); // 返回复位校准的状态
+    ADC_StartCalibration(ADC1); // 开始校准
+    while (ADC_GetCalibrationStatus(ADC1) == SET); // 等待校准完成
+}
+
+uint16_t AD_GetValue(uint8_t ADC_Channel){
+
+    ADC_RegularChannelConfig(ADC1, ADC_Channel, 1, ADC_SampleTime_55Cycles5);
+    ADC_SoftwareStartConvCmd(ADC1, ENABLE); // 软件触发转换
+    // 这个循环大概会等待5.6us
+    while (ADC_GetFlagStatus(ADC1, ADC_FLAG_EOC/*规则(或注入)组转换完成标志位*/) == RESET);// 获取标志位状态
+    return ADC_GetConversionValue(ADC1);// 获取转换值
+}
