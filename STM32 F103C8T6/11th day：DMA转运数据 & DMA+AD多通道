@@ -1,0 +1,243 @@
+#include "stm32f10x.h"
+#include "Delay.h"
+#include "OLED_I2C.h"
+#include "Encoder.h"
+#include "Timer.h"
+#include "AD.h"
+#include "MyDMA.h"
+
+// const uint8_t aa = 0x66;
+uint8_t DataA[] = {0x01, 0x02, 0x03, 0x04}; // 加 const 定义到FLASH内
+uint8_t DataB[] = {0, 0, 0, 0};
+
+int main(){
+
+    OLED_Init();
+    MyDMA_Init((uint32_t)DataA, (uint32_t)DataB, 4);
+
+    OLED_ShowString(1, 1, "DataA");
+    OLED_ShowString(3, 1, "DataB");
+    OLED_ShowHexNum(1, 8, (uint32_t)DataA, 8);
+    OLED_ShowHexNum(3, 8, (uint32_t)DataB, 8);
+
+    Delay_ms(1000);
+
+    MyDMA_Transfer();
+
+    OLED_ShowHexNum(2, 1, DataA[0], 2);
+    OLED_ShowHexNum(2, 4, DataA[1], 2);
+    OLED_ShowHexNum(2, 7, DataA[2], 2);
+    OLED_ShowHexNum(2, 10, DataA[3], 2);
+
+    OLED_ShowHexNum(4, 1, DataB[0], 2);
+    OLED_ShowHexNum(4, 4, DataB[1], 2);
+    OLED_ShowHexNum(4, 7, DataB[2], 2);
+    OLED_ShowHexNum(4, 10, DataB[3], 2);
+
+    Delay_ms(1000);
+
+    // OLED_ShowHexNum(1, 1, aa, 2);
+    // OLED_ShowHexNum(2, 1, (uint32_t)&ADC1->DR, 8); // 访问ADC1的DR寄存器
+    /*若想获得寄存器的地址，
+     *首先查询此寄存器所在外设的起始地址，
+     *随后在外设的寄存器总表中查询偏移。
+     **/
+
+    while (1){
+
+        DataA[0]++;
+        DataA[1]++;
+        DataA[2]++;
+        DataA[3]++;
+
+        OLED_ShowHexNum(2, 1, DataA[0], 2);
+        OLED_ShowHexNum(2, 4, DataA[1], 2);
+        OLED_ShowHexNum(2, 7, DataA[2], 2);
+        OLED_ShowHexNum(2, 10, DataA[3], 2);
+
+        OLED_ShowHexNum(4, 1, DataB[0], 2);
+        OLED_ShowHexNum(4, 4, DataB[1], 2);
+        OLED_ShowHexNum(4, 7, DataB[2], 2);
+        OLED_ShowHexNum(4, 10, DataB[3], 2);
+    }
+}
+
+
+#include "stm32f10x.h"
+
+uint16_t MyDMA_Size;
+
+void MyDMA_Init(uint32_t AddrA, uint32_t AddrB, uint16_t Size){
+
+    MyDMA_Size = Size;
+
+    RCC_ABP2Periph_ClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
+
+    DMA_InitTypeDef DMA_InitStructure = {
+        // 外设站点部分
+        .DMA_PeripheralBaseAddr = AddrA,                        // 基地址
+        .DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte,  // 数据宽度  以字节的方式传输
+        .DMA_PeripheralInc = DMA_PeripheralInc_Enable,          // 是否自增
+        // 存储器站点部分
+        .DMA_MemoryBaseAddr = AddrB,                    // 基地址
+        .DMA_MemoryDataSize = DMA_MemoryDataSize_Byte,  // 数据宽度 
+        .DMA_MemoryInc = DMA_MemoryInc_Enable,          // 是否自增 
+        
+        .DMA_DIR = DMA_DIR_PeripheralSRC,  // 传输方向 外设到存储器
+        .DMA_BufferSize = Size,            // 缓存区大小  此参数直接赋值给传输计数器的寄存器
+        .DMA_Mode = DMA_Mode_Normal,           // 传输模式（是否使用自动重装 ps：软件触发不能使用自动重装）
+        .DMA_M2M = DMA_M2M_Enable,            // 是否存储到存储器（硬件触发还是软件触发）
+        .DMA_Priority = DMA_Priority_Medium,       // 优先级  指定通道的优先级
+    };
+    DMA_Init(DMA1_Channel1, &DMA_InitStructure);
+
+    DMA_Cmd(DMA1_Channel1, DISABLE);
+}
+
+// 传输函数  调用一次就再次启动一次DMA转运
+void MyDMA_Transfer(void){
+    
+    DMA_Cmd(DMA1_Channel1, DISABLE); // 传输计数器赋值前，必须使DMA失能
+    DMA_SetCurrDataCounter(DMA1_Channel1, MyDMA_Size);
+    DMA_Cmd(DMA1_Channel1, ENABLE);
+
+    while (DMA_GetFlagStatus(DMA1_FLAG_TC1) == RESET); // 此处需要检查DMA1通道1转换完成的标志位
+    DMA_ClearFlag(DMA1_FLAG_TC1);
+}
+
+
+
+
+
+
+
+
+
+
+
+#include "stm32f10x.h"
+
+uint16_t MyDMA_Size;
+
+void MyDMA_Init(uint32_t AddrA, uint32_t AddrB, uint16_t Size){
+
+    MyDMA_Size = Size;
+
+    RCC_ABP2Periph_ClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
+
+    DMA_InitTypeDef DMA_InitStructure = {
+        // 外设站点部分
+        .DMA_PeripheralBaseAddr = AddrA,                        // 基地址
+        .DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte,  // 数据宽度  以字节的方式传输
+        .DMA_PeripheralInc = DMA_PeripheralInc_Enable,          // 是否自增
+        // 存储器站点部分
+        .DMA_MemoryBaseAddr = AddrB,                    // 基地址
+        .DMA_MemoryDataSize = DMA_MemoryDataSize_Byte,  // 数据宽度 
+        .DMA_MemoryInc = DMA_MemoryInc_Enable,          // 是否自增 
+        
+        .DMA_DIR = DMA_DIR_PeripheralSRC,  // 传输方向 外设到存储器
+        .DMA_BufferSize = Size,            // 缓存区大小  此参数直接赋值给传输计数器的寄存器
+        .DMA_Mode = DMA_Mode_Normal,           // 传输模式（是否使用自动重装 ps：软件触发不能使用自动重装）
+        .DMA_M2M = DMA_M2M_Enable,            // 是否存储到存储器（硬件触发还是软件触发）
+        .DMA_Priority = DMA_Priority_Medium,       // 优先级  指定通道的优先级
+    };
+    DMA_Init(DMA1_Channel1, &DMA_InitStructure);
+
+    DMA_Cmd(DMA1_Channel1, DISABLE);
+}
+
+// 传输函数  调用一次就再次启动一次DMA转运
+void MyDMA_Transfer(void){
+    
+    DMA_Cmd(DMA1_Channel1, DISABLE); // 传输计数器赋值前，必须使DMA失能
+    DMA_SetCurrDataCounter(DMA1_Channel1, MyDMA_Size);
+    DMA_Cmd(DMA1_Channel1, ENABLE);
+
+    while (DMA_GetFlagStatus(DMA1_FLAG_TC1) == RESET); // 此处需要检查DMA1通道1转换完成的标志位
+    DMA_ClearFlag(DMA1_FLAG_TC1);
+}
+
+
+
+
+#include "stm32f10x.h"
+
+uint16_t AD_Value[4];
+
+void AD_Init(void){
+    
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
+    
+    RCC_ADCCLKConfig(RCC_PCLK2_Div6); // 六分频
+
+    GPIO_InitTypeDef GPIO_InitStructure = {
+        .GPIO_Mode = GPIO_Mode_AIN, // 模拟输入模式
+        /*模拟输入是让信号直接流入板子内部外设(ADC)而非走原来的"数字信号通道"(比如施密特触发器，经过这个模拟信号就变成二值的了，肯定不行)*/
+        .GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_2 | GPIO_Pin_3,
+        .GPIO_Speed = GPIO_Speed_50MHz,
+    };
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+    // 选择规则组的输入通道
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_0, 1, ADC_SampleTime_55Cycles5);
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_1, 2, ADC_SampleTime_55Cycles5);
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_2, 3, ADC_SampleTime_55Cycles5);
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_3, 4, ADC_SampleTime_55Cycles5);
+
+    ADC_InitTypeDef ADC_InitStructure = {
+        .ADC_Mode = ADC_Mode_Independent, // ADC的工作模式，独立模式/双ADC模式
+        .ADC_DataAlign = ADC_DataAlign_Right, // 数据对齐方式
+        .ADC_ScanConvMode = ENABLE, // 指定扫描模式，单通道或者多通道
+        .ADC_NbrOfChannel = 4, // 通道数目，指定在扫描模式下总共使用几个通道.非扫描模式下默认值为1(序列1)
+        .ADC_ExternalTrigConv = ADC_ExternalTrigConv_None, // 外部触发转换选择(触发控制的触发源,此处为不使用外部触发，用内部软件触发)
+        .ADC_ContinuousConvMode = ENABLE, // 指定转换模式，连续模式还是单次模式
+    };
+    ADC_Init(ADC1, &ADC_InitStructure);
+
+
+
+    DMA_InitTypeDef DMA_InitStructure = {
+        // 外设站点部分
+        .DMA_PeripheralBaseAddr = (uint32_t)&ADC1->DR,                        // 基地址
+        .DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord,  // 数据宽度  以半字节的方式传输
+        .DMA_PeripheralInc = DMA_PeripheralInc_Disable,          // 是否自增
+        // 存储器站点部分
+        .DMA_MemoryBaseAddr = (uint32_t)AD_Value,                    // 基地址
+        .DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord,  // 数据宽度 
+        .DMA_MemoryInc = DMA_MemoryInc_Enable,          // 是否自增 
+        
+        .DMA_DIR = DMA_DIR_PeripheralSRC,  // 传输方向 外设到存储器
+        .DMA_BufferSize = 4,            // 缓存区大小  此参数直接赋值给传输计数器的寄存器
+        .DMA_Mode = DMA_Mode_Circular,           // 传输模式（是否使用自动重装 ps：软件触发不能使用自动重装）
+        .DMA_M2M = DMA_M2M_Disable,            // 是否存储到存储器（硬件触发还是软件触发）
+        .DMA_Priority = DMA_Priority_Medium,       // 优先级  指定通道的优先级
+    };
+    DMA_Init(DMA1_Channel1, &DMA_InitStructure);
+
+
+    DMA_Cmd(DMA1_Channel1, ENABLE);
+    ADC_DMACmd(ADC1, ENABLE);// 开启DMA触发信号的
+    ADC_Cmd(ADC1, ENABLE); // 开启电源
+
+
+    // 校准
+    ADC_ResetCalibration(ADC1); // 复位校准
+    while (ADC_GetResetCalibrationStatus(ADC1) == SET); // 返回复位校准的状态
+    ADC_StartCalibration(ADC1); // 开始校准
+    while (ADC_GetCalibrationStatus(ADC1) == SET); // 等待校准完成
+    
+    ADC_SoftwareStartConvCmd(ADC1, ENABLE); // 软件触发转换
+}
+
+// void AD_GetValue(void){
+
+//     DMA_Cmd(DMA1_Channel1, DISABLE);
+//     DMA_SetCurrDataCounter(DMA1_Channel1, 4);
+//     DMA_Cmd(DMA1_Channel1, ENABLE);
+
+
+//     while (DMA_GetFlagStatus(DMA1_FLAG_TC1) == RESET);
+//     DMA_ClearFlag(DMA1_FLAG_TC1);
+// }
