@@ -1,0 +1,80 @@
+#include "stm32f10x.h"
+#include "Delay.h"
+
+// #define SCL_PORT    GPIOB
+// #define SCL_PIN     GPIO_Pin_10 | GPIO_Pin_11
+
+void MyI2C_W_SCL(uint8_t BitValue){
+
+    GPIO_WriteBit(GPIOB, GPIO_Pin_10, (BitAction)BitValue); // BitAction 是枚举类型，不是C语言内置的基本数据类型，而是 STM32 标准外设库里用 typedef enum 自定义出来的类型
+    Delay_us(10);
+}
+
+void MyI2C_W_SDA(uint8_t BitValue){
+
+    GPIO_WriteBit(GPIOB, GPIO_Pin_11, (BitAction)BitValue); // BitAction 是枚举类型，不是C语言内置的基本数据类型，而是 STM32 标准外设库里用 typedef enum 自定义出来的类型
+    Delay_us(10);
+}
+
+uint8_t MyI2C_R_SDA(void){
+
+    uint8_t BitValue;
+    BitValue = GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_11);
+    Delay_us(10);
+    return BitValue;
+}
+
+
+void MyI2C_Init(void){
+
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
+    GPIO_InitTypeDef GPIO_InitStructure = {
+        .GPIO_Mode = GPIO_Mode_Out_PP,
+        .GPIO_Pin = GPIO_Pin_10 | GPIO_Pin_11,
+        .GPIO_Speed = GPIO_Speed_50MHz,
+    };
+    GPIO_Init(GPIOB, &GPIO_InitStructure);
+
+    GPIO_SetBits(GPIOB, GPIO_Pin_10 | GPIO_Pin_11);
+}
+
+void MyI2C_Start(void){
+
+    MyI2C_W_SCL(1); // 将SDA与SCL都释放置高电平
+    MyI2C_W_SDA(1); // SCL高时，此时能对SDA进行读操作，为防止误读为停止位，先释放SDA
+    MyI2C_W_SDA(0); // 前两行：两者都高电平，指定谁先无所谓，但若SCL低电平，SCL先高SDA后高是结束指令与start不符
+    MyI2C_W_SCL(0);
+}
+
+void MyI2C_Stop(void){
+
+    // 为了确保释放SDA能产生上升沿，需先拉低SDA后释放SCL再再释放SDA
+    MyI2C_W_SDA(0);
+    MyI2C_W_SCL(1);
+    MyI2C_W_SDA(1);
+}
+
+// 除了中止条件SCL以高电平结束，其余任意单元都以低电平结束
+void MyI2C_SendByte(uint8_t Byte){
+    // 在SCL低电平时，将Byte的最高位放在SDA上
+    uint8_t i;
+    for (i = 0; i < 8; ++i){
+        //MyI2C_W_SDA(Byte & (0x80 >> i));  // 0x80 = 128 = 1000 0000 (二进制)
+        MyI2C_W_SDA((Byte >> (7 - i)) & 0x01);  // 这种方法是移动目标位到最低位，然后只与最低位的掩码相与  // & 按位与：两个数逐位比较，两位都是 1 结果才是 1，否则是 0
+        MyI2C_W_SCL(1);                         // 用它和掩码相与，效果就是保留掩码为 1 的那一位，其他位全部清零
+        MyI2C_W_SCL(0);
+    }
+}
+
+uint8_t MyI2C_ReceiveByte(void){
+
+    uint8_t i, Byte = 0x00;
+    MyI2C_W_SDA(1);
+    for (i = 0; i < 8; ++i){
+        
+        MyI2C_W_SCL(1);
+        if (MyI2C_R_SDA() == 1) {Byte |= (0x80 >> i);} // 第 i 次循环只改动第 (7-i) 位，其余 7 位原封不动地保留下来
+        MyI2C_W_SCL(0);
+    }
+    return Byte;
+}
