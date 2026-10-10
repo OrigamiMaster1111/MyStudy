@@ -1,0 +1,147 @@
+#include "stm32f10x.h"
+#include "Delay.h"
+#include "OLED_I2C.h"
+#include "MPU6050.h"
+
+uint8_t ID;
+int16_t AX, AY, AZ, GX, GY, GZ;
+
+int main(){
+
+    OLED_Init();
+    MPU6050_Init();
+
+    OLED_ShowString(1, 1, "ID: ");
+    ID = MPU6050_GetID();
+    OLED_ShowHexNum(1, 4, ID, 2);
+
+    while (1){
+        
+        MPU6050_GetData(&AX, &AY, &AZ, &GX, &GY, &GZ);
+        OLED_ShowSignedNum(2, 1, AX, 5);
+        OLED_ShowSignedNum(3, 1, AY, 5);
+        OLED_ShowSignedNum(4, 1, AZ, 5);
+        OLED_ShowSignedNum(2, 8, GX, 5);
+        OLED_ShowSignedNum(3, 8, GY, 5);
+        OLED_ShowSignedNum(4, 8, GZ, 5);
+    }
+}
+
+
+#include "stm32f10x.h"
+#include "MyI2C.h"
+#include "MPU6050_Reg.h"
+
+#define MPU6050_ADR     0xD0
+
+// 指定地址写寄存器
+void MPU6050_WriteReg(uint8_t RegAdr, uint8_t Data){
+
+    MyI2C_Start();
+    MyI2C_SendByte(MPU6050_ADR);
+    ReceiveAck();
+    MyI2C_SendByte(RegAdr);
+    ReceiveAck();
+    MyI2C_SendByte(Data);
+    ReceiveAck();
+
+    MyI2C_Stop();
+}
+
+// 指定地址读一个字节
+uint8_t MPU6050_ReadReg(uint8_t RegAdr){
+
+    uint8_t Data;
+
+    MyI2C_Start();
+    MyI2C_SendByte(MPU6050_ADR);
+    ReceiveAck();
+    MyI2C_SendByte(RegAdr);
+    ReceiveAck();
+
+    MyI2C_Start();
+    MyI2C_SendByte(MPU6050_ADR | 0x01);
+    ReceiveAck();
+    Data = MyI2C_ReceiveByte();
+    SendAck(1); // 参数为0给从机应答，1为不应答
+    MyI2C_Stop();
+
+    return Data;
+}
+
+void MPU6050_Init(void){
+
+    MyI2C_Init();
+    MPU6050_WriteReg(MPU6050_PWR_MGMT_1, 0x01);  // 解除睡眠，选择陀螺仪时钟
+    MPU6050_WriteReg(MPU6050_PWR_MGMT_2, 0x00);  // 6轴均不待机
+    MPU6050_WriteReg(MPU6050_CONFIG, 0x06);      // 采样分频为10，滤波参数给最大
+    MPU6050_WriteReg(MPU6050_GYRO_CONFIG, 0x18); // 陀螺仪最大量程
+    MPU6050_WriteReg(MPU6050_ACCEL_CONFIG, 0x18);// 加速度计最大量程
+}
+
+uint8_t MPU6050_GetID(void){
+
+    return MPU6050_ReadReg(MPU6050_WHO_AM_I);
+}
+
+void MPU6050_GetData(int16_t *AccX, int16_t *AccY, int16_t *AccZ,
+                     int16_t *GyroX, int16_t *GyroY, int16_t *GyroZ)
+{
+    uint8_t DataH, DataL;
+
+    /*分别读取六个轴数据寄存器的高位和地位，拼接成16位再通过指针变量返回*/
+
+    DataH = MPU6050_ReadReg(MPU6050_ACCEL_XOUT_H);
+    DataL = MPU6050_ReadReg(MPU6050_ACCEL_XOUT_L);
+    *AccX = (DataH << 8) | DataL;
+    
+    DataH = MPU6050_ReadReg(MPU6050_ACCEL_YOUT_H);
+    DataL = MPU6050_ReadReg(MPU6050_ACCEL_YOUT_L);
+    *AccY = (DataH << 8) | DataL;
+
+    DataH = MPU6050_ReadReg(MPU6050_ACCEL_ZOUT_H);
+    DataL = MPU6050_ReadReg(MPU6050_ACCEL_ZOUT_L);
+    *AccZ = (DataH << 8) | DataL;
+
+    DataH = MPU6050_ReadReg(MPU6050_GYRO_XOUT_H);
+    DataL = MPU6050_ReadReg(MPU6050_GYRO_XOUT_L);
+    *GyroX = (DataH << 8) | DataL;
+
+    DataH = MPU6050_ReadReg(MPU6050_GYRO_YOUT_H);
+    DataL = MPU6050_ReadReg(MPU6050_GYRO_YOUT_L);
+    *GyroY = (DataH << 8) | DataL;
+
+    DataH = MPU6050_ReadReg(MPU6050_GYRO_ZOUT_H);
+    DataL = MPU6050_ReadReg(MPU6050_GYRO_ZOUT_L);
+    *GyroZ = (DataH << 8) | DataL;
+}
+
+
+#ifndef __MPU6050_REG_H
+#define __MPU6050_REG_H
+
+#define	MPU6050_SMPLRT_DIV		0x19
+#define	MPU6050_CONFIG			0x1A
+#define	MPU6050_GYRO_CONFIG		0x1B
+#define	MPU6050_ACCEL_CONFIG	0x1C
+
+#define	MPU6050_ACCEL_XOUT_H	0x3B
+#define	MPU6050_ACCEL_XOUT_L	0x3C
+#define	MPU6050_ACCEL_YOUT_H	0x3D
+#define	MPU6050_ACCEL_YOUT_L	0x3E
+#define	MPU6050_ACCEL_ZOUT_H	0x3F
+#define	MPU6050_ACCEL_ZOUT_L	0x40
+#define	MPU6050_TEMP_OUT_H		0x41
+#define	MPU6050_TEMP_OUT_L		0x42
+#define	MPU6050_GYRO_XOUT_H		0x43
+#define	MPU6050_GYRO_XOUT_L		0x44
+#define	MPU6050_GYRO_YOUT_H		0x45
+#define	MPU6050_GYRO_YOUT_L		0x46
+#define	MPU6050_GYRO_ZOUT_H		0x47
+#define	MPU6050_GYRO_ZOUT_L		0x48
+
+#define	MPU6050_PWR_MGMT_1		0x6B
+#define	MPU6050_PWR_MGMT_2		0x6C
+#define	MPU6050_WHO_AM_I		0x75
+
+#endif
