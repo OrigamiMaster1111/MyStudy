@@ -1,0 +1,134 @@
+
+#include "stm32f10x.h"
+#include "MPU6050_Reg.h"
+#include "MPU6050.h"
+
+#define MPU6050_ADR     0xD0
+
+void MPU6050_WaitEvent(I2C_TypeDef* I2Cx, uint32_t I2C_EVENT);
+
+// 指定地址写寄存器
+void MPU6050_WriteReg(uint8_t RegAdr, uint8_t Data){
+
+    I2C_GenerateSTART(I2C2, ENABLE);
+    MPU6050_WaitEvent(I2C2, I2C_EVENT_MASTER_MODE_SELECT);// 检测EV5事件是否发动
+
+    I2C_Send7bitAddress(I2C2, MPU6050_ADR, I2C_Direction_Transmitter); // 如果选择transmitter发送，就会将地址最低位清零；如果选择receiver接收，就会把地址最低位置1
+    MPU6050_WaitEvent(I2C2, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED);
+
+    I2C_SendData(I2C2, RegAdr);
+    MPU6050_WaitEvent(I2C2, I2C_EVENT_MASTER_BYTE_TRANSMITTING);
+
+    I2C_SendData(I2C2, Data);
+    MPU6050_WaitEvent(I2C2, I2C_EVENT_MASTER_BYTE_TRANSMITTED);
+
+    I2C_GenerateSTOP(I2C2, ENABLE);
+}
+
+void MPU6050_WaitEvent(I2C_TypeDef* I2Cx, uint32_t I2C_EVENT){
+    
+    uint32_t Timeout = 10000;
+    while (I2C_CheckEvent(I2Cx, I2C_EVENT) != SUCCESS) { // 等待事件是否发生
+        if (Timeout-- == 0) { break; } // 超时退出
+    }
+}
+
+// 指定地址读一个字节
+uint8_t MPU6050_ReadReg(uint8_t RegAdr){
+
+    uint8_t Data;
+
+    I2C_GenerateSTART(I2C2, ENABLE);
+    MPU6050_WaitEvent(I2C2, I2C_EVENT_MASTER_MODE_SELECT);// 检测EV5事件是否发动
+
+    I2C_Send7bitAddress(I2C2, MPU6050_ADR, I2C_Direction_Transmitter); // 如果选择transmitter发送，就会将地址最低位清零；如果选择receiver接收，就会把地址最低位置1
+    MPU6050_WaitEvent(I2C2, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED);
+
+    I2C_SendData(I2C2, RegAdr);
+    MPU6050_WaitEvent(I2C2, I2C_EVENT_MASTER_BYTE_TRANSMITTED);
+
+    I2C_GenerateSTART(I2C2, ENABLE);
+    MPU6050_WaitEvent(I2C2, I2C_EVENT_MASTER_MODE_SELECT);
+
+    I2C_Send7bitAddress(I2C2, MPU6050_ADR, I2C_Direction_Receiver);
+    MPU6050_WaitEvent(I2C2, I2C_EVENT_MASTER_RECEIVER_MODE_SELECTED);
+
+    I2C_AcknowledgeConfig(I2C2, DISABLE); // 不给应答
+    I2C_GenerateSTOP(I2C2, ENABLE); // 在接收最后字节之前要提前设置ACK与Stop
+
+    MPU6050_WaitEvent(I2C2, I2C_EVENT_MASTER_BYTE_RECEIVED);
+    Data = I2C_ReceiveData(I2C2);
+
+    I2C_AcknowledgeConfig(I2C2, ENABLE);
+
+    return Data;
+}
+
+void MPU6050_Init(void){
+
+    // MyI2C_Init();
+
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C2, ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
+
+    GPIO_InitTypeDef GPIO_InitStructure = {
+        .GPIO_Mode = GPIO_Mode_AF_OD, // 复用开漏，复用：将控制权交给外设；开漏：I2C协议设计要求
+        .GPIO_Pin = GPIO_Pin_10 | GPIO_Pin_11,
+        .GPIO_Speed = GPIO_Speed_50MHz,
+    };
+    GPIO_Init(GPIOB, &GPIO_InitStructure);
+
+    I2C_InitTypeDef I2C_InitStructure = {
+        .I2C_Mode = I2C_Mode_I2C,
+        .I2C_ClockSpeed = 50000, // SCL时钟频率
+        .I2C_DutyCycle = I2C_DutyCycle_16_9, // 时钟占空比参数，在小于100kHz的标准速度下，占空比为固定的1:1
+        .I2C_Ack = I2C_Ack_Enable,
+        .I2C_AcknowledgedAddress = I2C_AcknowledgedAddress_7bit, // 指定stm32作为从机可以响应几位的地址
+        .I2C_OwnAddress1 = 0x00, // 用于指定stm32的自身地址
+    };
+    I2C_Init(I2C2, &I2C_InitStructure);
+    I2C_Cmd(I2C2, ENABLE);
+
+    MPU6050_WriteReg(MPU6050_PWR_MGMT_1, 0x01);  // 解除睡眠，选择陀螺仪时钟
+    MPU6050_WriteReg(MPU6050_PWR_MGMT_2, 0x00);  // 6轴均不待机
+    MPU6050_WriteReg(MPU6050_CONFIG, 0x06);      // 采样分频为10，滤波参数给最大
+    MPU6050_WriteReg(MPU6050_GYRO_CONFIG, 0x18); // 陀螺仪最大量程
+    MPU6050_WriteReg(MPU6050_ACCEL_CONFIG, 0x18);// 加速度计最大量程
+}
+
+uint8_t MPU6050_GetID(void){
+
+    return MPU6050_ReadReg(MPU6050_WHO_AM_I);
+}
+
+void MPU6050_GetData(int16_t *AccX, int16_t *AccY, int16_t *AccZ,
+                     int16_t *GyroX, int16_t *GyroY, int16_t *GyroZ)
+{
+    uint8_t DataH, DataL;
+
+    /*分别读取六个轴数据寄存器的高位和地位，拼接成16位再通过指针变量返回*/
+
+    DataH = MPU6050_ReadReg(MPU6050_ACCEL_XOUT_H);
+    DataL = MPU6050_ReadReg(MPU6050_ACCEL_XOUT_L);
+    *AccX = (DataH << 8) | DataL;
+    
+    DataH = MPU6050_ReadReg(MPU6050_ACCEL_YOUT_H);
+    DataL = MPU6050_ReadReg(MPU6050_ACCEL_YOUT_L);
+    *AccY = (DataH << 8) | DataL;
+
+    DataH = MPU6050_ReadReg(MPU6050_ACCEL_ZOUT_H);
+    DataL = MPU6050_ReadReg(MPU6050_ACCEL_ZOUT_L);
+    *AccZ = (DataH << 8) | DataL;
+
+    DataH = MPU6050_ReadReg(MPU6050_GYRO_XOUT_H);
+    DataL = MPU6050_ReadReg(MPU6050_GYRO_XOUT_L);
+    *GyroX = (DataH << 8) | DataL;
+
+    DataH = MPU6050_ReadReg(MPU6050_GYRO_YOUT_H);
+    DataL = MPU6050_ReadReg(MPU6050_GYRO_YOUT_L);
+    *GyroY = (DataH << 8) | DataL;
+
+    DataH = MPU6050_ReadReg(MPU6050_GYRO_ZOUT_H);
+    DataL = MPU6050_ReadReg(MPU6050_GYRO_ZOUT_L);
+    *GyroZ = (DataH << 8) | DataL;
+}
