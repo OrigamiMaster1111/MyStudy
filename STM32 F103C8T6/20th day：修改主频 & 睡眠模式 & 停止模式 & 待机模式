@@ -1,0 +1,128 @@
+#include "stm32f10x.h"                  // Device header
+#include "Delay.h"
+#include "OLED_I2C.h"
+
+int main(void)
+{
+	OLED_Init();
+
+	OLED_ShowString(1, 1, "SystemCLK:");
+	OLED_ShowNum(1, 8, SystemCoreClock, 8);
+
+	while (1)
+	{
+		OLED_ShowString(2, 1, "Running");
+		Delay_ms(500);
+		OLED_ShowString(2, 1, "       ");
+		Delay_ms(500);
+	}
+}
+
+
+
+
+#include "stm32f10x.h"                  // Device header
+#include "Delay.h"
+#include "OLED_I2C.h"
+#include "Serial.h"
+
+uint8_t RxData;
+
+int main(void)
+{
+	OLED_Init();
+	Serial_Init();
+	
+	OLED_ShowString(1, 1, "RxData:");
+
+	while (1)
+	{
+		if (Serial_GetRxFlag() == 1){
+
+			RxData = Serial_GetRxData;
+			Serial_SendByte(RxData);
+			OLED_ShowHexNum(1, 8, RxData, 2);
+		}
+
+		OLED_ShowString(2, 1, "Running");
+		Delay_ms(100);
+		OLED_ShowString(2, 1, "       ");
+		Delay_ms(100);
+
+		__WFI();
+	}
+}
+
+
+
+
+#include "stm32f10x.h"
+#include "Delay.h"
+#include "OLED_I2C.h"
+#include "CountSensor.h"
+
+uint8_t RxData;
+
+int main(void)
+{
+	OLED_Init();
+	CountSensor_Init();
+	
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);
+
+	OLED_ShowString(1, 1, "Count:");
+
+	while (1)
+	{
+		OLED_ShowNum(1, 7, CountSensor_Get(), 5);
+
+		OLED_ShowString(1, 1, "Running");
+		Delay_ms(100);
+		OLED_ShowString(2, 1, "       ");
+		Delay_ms(100);
+
+		PWR_EnterSTOPMode(PWR_Regulator_ON, PWR_STOPEntry_WFI);// 参数一：指定电压调节器在停止模式里的状态（开启或低功耗）参数二：选择WFI还是WFE
+		
+		SystemInit();
+	}
+}
+
+
+
+
+#include "stm32f10x.h"                  // Device header
+#include "MyRTC.h"
+#include "Delay.h"
+#include "OLED_I2C.h"
+
+int main(void)
+{
+	OLED_Init();
+	MyRTC_Init();
+
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);
+
+	OLED_ShowString(1, 1, "CNT:");
+	OLED_ShowString(1, 1, "ALR:");
+	OLED_ShowString(3, 1, "ALRF:"); // 闹钟标志位
+
+	PWR_WakeUpPinCmd(ENABLE);
+
+	uint32_t Alarm = RTC_GetCounter() + 10;
+	RTC_SetAlarm(Alarm);
+
+	OLED_ShowNum(2, 6, Alarm, 10);
+
+	while (1)
+	{
+		OLED_ShowNum(1, 6, RTC_GetCounter(), 10);
+		OLED_ShowNum(3, 6, RTC_GetFlagStatus(RTC_FLAG_ALR), 1);
+
+		OLED_ShowString(4, 1, "Running");
+		Delay_ms(100);
+		OLED_ShowString(4, 1, "       ");
+		Delay_ms(100);
+
+		PWR_EnterSTANDBYMode();
+	}
+}
