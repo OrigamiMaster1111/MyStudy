@@ -1,0 +1,218 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+typedef struct Node{
+    int data;
+    struct Node *next;
+} Node;
+
+void createInitNode(int num, Node *head, Node **tail) {
+
+    head->next = NULL;
+    head->data = 0;
+    *tail = head;
+
+    for (int cnt = 0; cnt < num; cnt++) {
+        
+        Node *newN = (Node *)malloc(sizeof(Node));
+        if (newN == NULL) return;
+
+        printf("Node%d:", cnt + 1);
+        scanf("%d", &newN->data);
+        newN->next = NULL;
+
+        (*tail)->next = newN; 
+        *tail = newN;         
+        head->data++;         
+    }
+}
+
+// 尾插
+void tailInsert(Node *head, Node **tail, int value) {
+
+    Node *newN = (Node *)malloc(sizeof(Node));
+    if (newN == NULL) return;
+
+    newN->data = value;
+    newN->next = NULL;
+
+    (*tail)->next = newN;
+    *tail = newN;
+    head->data++;
+}
+
+
+void printList(Node *head) {
+
+    printf("链表(%d个): ", head->data);
+    for (Node *p = head->next; p != NULL; p = p->next){
+    
+        printf("%d -> ", p->data);
+    }
+    printf("NULL\n");
+}
+
+// 删除所有
+void freeList(Node *head) {
+
+    Node *p = head->next;
+    while (p != NULL) {
+        Node *t = p;
+        p = p->next;
+        free(t);
+    }
+    head->next = NULL;
+    head->data = 0;
+}
+
+// 尾删
+void deleteTail(Node *head, Node **tail) {
+    
+    if (head->next == NULL) {
+        printf("链表为空，无法尾删\n");
+        return;
+    }
+
+    // 只有一个节点
+    if (head->next->next == NULL){
+        
+        free(head->next);
+        head->next = NULL;
+        *tail = head;
+        head->data--;
+        return;
+    }
+
+    // 找倒数第二个节点
+    Node *prev = head;
+    while (prev->next->next != NULL)
+        prev = prev->next;
+
+    free(prev->next);
+    prev->next = NULL;
+    *tail = prev;
+    head->data--;
+}
+
+void removeDup(Node *head, Node **tail) {
+
+    Node **pp = &head->next;
+
+    while (*pp != NULL) {
+        Node *cur = *pp;
+
+        Node **q = &cur->next;
+        while (*q != NULL) {
+
+            if ((*q)->data == cur->data) {
+                Node *victim = *q;
+                *q = victim->next; 
+                free(victim);
+                head->data--;
+            } else {
+                q = &(*q)->next;
+            }
+        }
+        pp = &cur->next;
+    }
+
+    *tail = head;
+    while ((*tail)->next != NULL)
+        *tail = (*tail)->next;
+}
+
+
+Node* mergeDesc(Node *headA, Node *headB) {
+
+    Node *tail = NULL;
+
+    Node *pa = headA->next;
+    Node *pb = headB->next;
+
+    int cnt = headA->data + headB->data;   // 总数
+    headA->next = NULL; // A作头节点
+
+    while (pa != NULL || pb != NULL) {
+
+        Node *q;
+        if (pa == NULL) {
+            q = pb;
+            pb = pb->next;
+        } else if (pb == NULL) {
+            q = pa;
+            pa = pa->next;
+        } else if (pa->data <= pb->data) {  // 取小，相等取 A
+            q = pa;
+            pa = pa->next;
+        } else {
+            q = pb;
+            pb = pb->next;
+        }
+
+        if (tail == NULL){
+            tail = q;
+        }
+
+        q->next = headA->next;
+        headA->next = q;
+    }
+
+    headA->data = cnt;
+    headB->next = NULL;
+    headB->data = 0;
+
+    return tail;
+}
+
+
+int main(void) {
+    int num;
+    Node head = { .data = 0, .next = NULL };
+    Node *tail = NULL;
+
+    printf("enter the num:");
+    scanf("%d", &num);
+
+    createInitNode(num, &head, &tail);
+    printList(&head);
+
+    printf("去重后\n");
+    removeDup(&head, &tail);
+    printList(&head);
+
+    printf("尾删后\n");
+    deleteTail(&head, &tail);
+    printList(&head);
+
+    tailInsert(&head, &tail, 999);
+    printList(&head);
+
+    freeList(&head);
+
+
+    // ------- 第二问 -----------
+    Node headA = { .data = 0, .next = NULL };
+    Node headB = { .data = 0, .next = NULL };
+    Node *tailA = NULL, *tailB = NULL;
+    int nA, nB;
+
+    printf("\n链表A的元素个数:");
+    scanf("%d", &nA);
+    createInitNode(nA, &headA, &tailA);
+    printf("A: ");
+    printList(&headA);
+
+    printf("链表B的元素个数:");
+    scanf("%d", &nB);
+    createInitNode(nB, &headB, &tailB);
+    printf("B: ");
+    printList(&headB);
+
+    mergeDesc(&headA, &headB);
+    printf("合并后: ");
+    printList(&headA);
+
+    freeList(&headA);
+    freeList(&headB);
+    return 0;
+}
