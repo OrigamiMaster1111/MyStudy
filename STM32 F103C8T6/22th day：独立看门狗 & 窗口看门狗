@@ -1,0 +1,99 @@
+#include "stm32f10x.h"                  // Device header
+#include "Delay.h"
+#include "OLED_I2C.h"
+#include "Key.h"
+
+int main(void)
+{
+	OLED_Init();
+	Key_Init();
+
+	OLED_ShowString(1, 1, "IWDG TEST");
+
+	if (RCC_GetFlagStatus(RCC_FLAG_IWDGRST) == SET){
+
+		OLED_ShowString(2, 1, "IWDGRST");
+		Delay_ms(500);
+		OLED_ShowString(2, 1, "       ");
+		Delay_ms(100);
+
+		RCC_ClearFlag(); // 必须主动清除标志位，因为按下复位键后不会自动清0
+	}
+	else {
+
+		OLED_ShowString(2, 1, "RST");
+		Delay_ms(500);
+		OLED_ShowString(2, 1, "   ");
+		Delay_ms(100);
+	}
+
+	// 初始化独立看门狗
+	IWDG_WriteAccessCmd(IWDG_WriteAccess_Enable);
+	IWDG_SetPrescaler(IWDG_Prescaler_16);
+	IWDG_SetReload(2499);
+	IWDG_ReloadCounter();
+	IWDG_Enable();			// 在喂狗或使能时，会在键寄存器写入555以外的值
+
+	while (1)
+	{
+		Key_GetNum();
+
+		IWDG_ReloadCounter();
+
+		OLED_ShowString(4, 1, "Feed");
+		Delay_ms(600);
+		OLED_ShowString(4, 1, "    ");
+		Delay_ms(200);
+	}
+}
+
+
+
+
+#include "stm32f10x.h"                  // Device header
+#include "Delay.h"
+#include "OLED_I2C.h"
+#include "Key.h"
+
+int main(void)
+{
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_WWDG, ENABLE);
+
+	OLED_Init();
+	Key_Init();
+
+	OLED_ShowString(1, 1, "WWDG TEST");
+	
+	if (RCC_GetFlagStatus(RCC_FLAG_WWDGRST) == SET){
+		
+		OLED_ShowString(2, 1, "WWDGRST");
+		Delay_ms(500);
+		OLED_ShowString(2, 1, "       ");
+		Delay_ms(100);
+		
+		RCC_ClearFlag(); // 必须主动清除标志位，因为按下复位键后不会自动清0
+	}
+	else {
+		
+		OLED_ShowString(2, 1, "RST");
+		Delay_ms(500);
+		OLED_ShowString(2, 1, "   ");
+		Delay_ms(100);
+	}
+	
+	WWDG_SetPrescaler(WWDG_Prescaler_8);
+	WWDG_SetWindowValue(0x40 | 21);
+	WWDG_Enable(0x40 | 54);
+
+	while (1)
+	{
+		Key_GetNum();
+
+		OLED_ShowString(4, 1, "Feed");
+		Delay_ms(20);
+		OLED_ShowString(4, 1, "    ");
+		Delay_ms(20);
+
+		WWDG_SetCounter(0x40 | 54);
+	}
+}
